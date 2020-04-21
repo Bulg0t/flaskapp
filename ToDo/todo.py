@@ -6,12 +6,18 @@ from flask import render_template
 import os
 import sqlite3
 
+app = Flask(__name__)
+
 app.config.update(dict(
     SECRET_KEY='bardzosekretnawartosc',
     DATABASE=os.path.join(app.root_path, 'db.sqlite'),
     SITE_NAME='Moje zadania'
 ))
 
+@app.route('/')
+def index():
+    # return 'Cześć, tu Python!'
+    return render_template('index.html')
 
 def get_db():
     """Funkcja tworząca połączenie z bazą danych"""
