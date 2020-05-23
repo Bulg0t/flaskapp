@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
-# quiz/todo.py
-
 from flask import Flask, g
 from flask import render_template
 import os
 import sqlite3
+from datetime import datetime
+from flask import flash, redirect, url_for, request
+
 
 app = Flask(__name__)
 
@@ -14,10 +14,6 @@ app.config.update(dict(
     SITE_NAME='Moje zadania'
 ))
 
-@app.route('/')
-def index():
-    # return 'Cześć, tu Python!'
-    return render_template('index.html')
 
 def get_db():
     """Funkcja tworząca połączenie z bazą danych"""
@@ -33,6 +29,57 @@ def close_db(error):
     """Zamykanie połączenia z bazą"""
     if g.get('db'):
         g.db.close()
+
+
+@app.route('/')
+def index():
+    # return 'Cześć, tu Python!'
+    return render_template('index.html')
+
+
+@app.route('/zadania', methods=['GET', 'POST'])
+def zadania():
+    error = None
+    if request.method == 'POST':
+        zadanie = request.form['zadanie'].strip()
+        if len(zadanie) > 0:
+            zrobione = '0'
+            data_pub = datetime.now()
+            db = get_db()
+            db.execute('INSERT INTO zadania VALUES (?, ?, ?, ?);',
+                       [None, zadanie, zrobione, data_pub])
+            db.commit()
+            flash('Dodano nowe zadanie.', 'text-success')
+            return redirect(url_for('zadania'))
+
+        flash('Nie możesz dodać pustego zadania!', 'text-danger')
+
+    db = get_db()
+    kursor = db.execute('SELECT * FROM zadania ORDER BY data_pub DESC;')
+    zadania = kursor.fetchall()
+    return render_template('zadania_lista.html', zadania=zadania)
+
+
+@app.route('/zrobione', methods=['POST'])
+def zrobione():
+    """Zmiana statusu zadania na wykonane."""
+    zadanie_id = request.form['id']
+    db = get_db()
+    db.execute('UPDATE zadania SET zrobione=1 WHERE id=?', [zadanie_id])
+    db.commit()
+    flash('Zmieniono status zadania.')
+    return redirect(url_for('zadania'))
+
+
+@app.route('/usun', methods=['POST'])
+def usun():
+    zadanie_id = request.form['id']
+    db = get_db()
+    db.execute('DELETE FROM zadania WHERE id=?', [zadanie_id])
+    db.commit()
+    flash('Usunąłem zadanie!', 'text-danger')
+    return redirect(url_for('zadania'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
